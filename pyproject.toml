@@ -1,0 +1,16 @@
+[project]
+name = "bondscope-india"
+version = "0.1.0"
+description = "Public Indian bond listing scraper and local market dashboard"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+bondscope = "bondscope.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["bondscope*"]

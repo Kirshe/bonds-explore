@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#143c30">
+  <meta name="description" content="Explore public Indian bond listings, compare quoted yields, and understand the fixed income landscape.">
+  <title>BondScope — India's fixed income, in focus</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#explorer">Skip to bond table</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="BondScope home"><img src="/favicon.svg" alt="" width="34" height="34">BondScope<span class="country">INDIA</span></a>
+    <nav aria-label="Main navigation"><a class="active" href="#overview">Market overview</a><a href="#explorer">Bond explorer</a><a href="#methodology">Data & sources</a></nav>
+    <span class="header-note"><span class="status-dot"></span> Independent market research</span>
+  </header>
+
+  <main>
+    <section class="page-heading" id="overview">
+      <div><p class="eyebrow">THE FIXED INCOME LANDSCAPE</p><h1>India's bond market,<br class="mobile-break"> in focus<span>.</span></h1><p class="subtitle">Explore the listings. Understand the yields. See the bigger picture.</p></div>
+      <button class="button primary" id="refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6.1 7a7 7 0 0 1 11.6-2L20 8M4 16l2.3 3A7 7 0 0 0 18 17"/></svg><span>Refresh listings</span></button>
+    </section>
+
+    <div class="notice" id="data-notice" role="status"><span class="notice-symbol">i</span><div><strong id="notice-title">Loading public listings…</strong><span id="notice-copy">Source provenance and collection time will appear here.</span></div><a href="#methodology">About this data <span aria-hidden="true">↗</span></a></div>
+    <div id="feedback" class="feedback" role="status" hidden></div>
+
+    <section class="metrics" aria-label="Tracked listing statistics">
+      <article class="metric"><div class="metric-top"><span>Tracked bonds</span><span class="mini-icon">▤</span></div><div class="metric-value" id="metric-count">—</div><p id="metric-categories">Across available categories</p></article>
+      <article class="metric"><div class="metric-top"><span>Median quoted yield</span><span class="mini-icon">%</span></div><div class="metric-value" id="metric-median">—</div><p id="metric-yield-count">Conventional bonds only</p></article>
+      <article class="metric"><div class="metric-top"><span>Quoted yield range</span><span class="mini-icon">↗</span></div><div class="metric-value range" id="metric-range">—</div><p>Before tax · source-reported figures</p></article>
+      <article class="metric metric-dark"><div class="metric-top"><span>Public data sources</span><span class="mini-icon">◎</span></div><div class="metric-value">01 <span class="small-value">/ configured</span></div><p id="metric-source">Bondbazaar · awaiting data</p></article>
+    </section>
+
+    <section class="insights" aria-label="Listing market overview">
+      <article class="yield-panel panel"><div class="panel-title"><div><p class="eyebrow">A VIEW ACROSS SEGMENTS</p><h2>Where are the yields?</h2></div><span class="pill neutral">Median quoted yield</span></div><div id="yield-chart" class="yield-chart" aria-label="Median yield by bond category"></div><p class="chart-footnote">Based on tracked listings, not the whole market. Gold bonds excluded.</p></article>
+      <article class="context-panel"><div class="context-top"><span class="context-icon">↗</span><span class="eyebrow">FIXED INCOME, EXPLAINED</span></div><h2>A higher yield tells<br>only half the story.</h2><p>Compare the issuer, credit risk, liquidity and repayment terms alongside the return.</p><button class="text-button" id="learn-button">Get to know the bond market <span aria-hidden="true">→</span></button><div class="context-lines" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+    </section>
+
+    <section id="explorer" class="explorer">
+      <div class="section-title"><div><div class="title-row"><h2>Bond explorer</h2><span id="total-pill" class="pill neutral">— listings</span></div><p>One table. A clearer view of your fixed income options.</p></div><button id="export" class="button secondary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"/></svg>Export CSV</button></div>
+      <div class="tabs" role="group" aria-label="Filter by bond type" id="category-tabs"><button class="tab selected" data-category="" aria-pressed="true">All bonds</button><button class="tab" data-category="State government" aria-pressed="false">Government</button><button class="tab" data-category="Corporate / NBFC" aria-pressed="false">Corporate / NBFC</button><button class="tab" data-category="PSU" aria-pressed="false">PSU</button><button class="tab" data-category="Tax-free" aria-pressed="false">Tax-free</button><button class="tab" data-category="Sovereign gold" aria-pressed="false">Sovereign gold</button></div>
+      <div class="filter-bar">
+        <label class="search-box"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="search" type="search" placeholder="Search issuer or ISIN…" aria-label="Search issuer or ISIN"><kbd>/</kbd></label>
+        <label class="select-label"><span class="sr-only">Quoted yield</span><select id="yield-filter"><option value="">All yields</option><option value="under7">Under 7%</option><option value="7to9">7% – 9%</option><option value="over9">Above 9%</option></select></label>
+        <label class="select-label"><span class="sr-only">Interest payout</span><select id="payout-filter"><option value="">All payouts</option><option value="Monthly">Monthly</option><option value="Quarterly">Quarterly</option><option value="Semi Annual">Semi annual</option><option value="Annual">Annual</option></select></label>
+        <button class="reset" id="reset">Reset filters</button>
+      </div>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Bond listings; scroll horizontally on smaller screens">
+        <table><caption class="sr-only">Public Indian bond listings. Select a column heading to sort or a bond to see details.</caption><thead><tr><th scope="col" aria-sort="ascending"><button data-sort="issuer">Bond / issuer <span>↑</span></button></th><th scope="col"><button data-sort="category">Type <span>↕</span></button></th><th scope="col"><button data-sort="yield_pct">Quoted yield <span>↕</span></button></th><th scope="col"><button data-sort="coupon_pct">Coupon <span>↕</span></button></th><th scope="col"><button data-sort="tenure_raw">Source tenure <span>↕</span></button></th><th scope="col"><button data-sort="payout">Payout <span>↕</span></button></th><th scope="col">Source</th><th scope="col"><span class="sr-only">Details</span></th></tr></thead><tbody id="bond-rows"><tr><td colspan="8" class="empty">Loading bond listings…</td></tr></tbody></table>
+      </div>
+      <div class="table-footer"><p id="results-count" aria-live="polite">Loading…</p><div class="pagination"><button id="prev" aria-label="Previous page">←</button><span id="page-label">Page 1 of 1</span><button id="next" aria-label="Next page">→</button></div></div>
+      <p class="table-note"><span aria-hidden="true">ⓘ</span> Quoted yield is the platform's published figure; its calculation is unverified. Source tenure may be outdated. Select a bond for provenance and missing fields.</p>
+    </section>
+
+    <section class="methodology" id="methodology"><div><p class="eyebrow">TRANSPARENCY FIRST</p><h2>Know what you're looking at.</h2><p>This is a view of public listings from one platform, not a complete inventory of India's bond market. A listing does not confirm that a bond is currently available to buy.</p></div><div class="source-card"><div class="source-card-head"><strong><span class="source-mark">B</span> Bondbazaar</strong><span class="pill amber" id="source-mode">Snapshot</span></div><dl><div><dt>Page observed</dt><dd id="source-time">—</dd></div><div><dt>Quote timestamp</dt><dd>Not published by source</dd></div><div><dt>Last refresh attempt</dt><dd id="source-attempt">Not attempted</dd></div></dl><p id="source-error" hidden></p><a href="https://www.bondbazaar.com/" target="_blank" rel="noopener noreferrer">View original public listings ↗</a></div></section>
+  </main>
+  <footer><a class="brand" href="/">BondScope<span class="country">INDIA</span></a><p>Information for research. Returns are not guaranteed. Verify terms with the issuer or platform.</p><span>Built for a clearer perspective.</span></footer>
+
+  <dialog id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-heading"><p class="eyebrow">BOND DETAILS</p><button class="close-dialog" aria-label="Close bond details">×</button></div><h2 id="detail-title"></h2><div id="detail-body"></div></dialog>
+  <dialog id="learn-dialog" aria-labelledby="learn-title"><div class="dialog-heading"><p class="eyebrow">THE BOND MARKET, AT A GLANCE</p><button class="close-dialog" aria-label="Close market guide">×</button></div><h2 id="learn-title">Different bonds. Different trade-offs.</h2><div class="guide"><p><strong>Government securities & state loans</strong> finance central and state borrowing. Their market prices still move with interest rates and liquidity.</p><p><strong>Corporate & PSU bonds</strong> finance companies and public sector issuers. Assess the issuer's ability to repay; public ownership alone is not an explicit sovereign guarantee.</p><p><strong>Tax-free bonds</strong> may offer exempt interest under the applicable issue terms. A sale can have different tax treatment; verify your own situation.</p><p><strong>Sovereign gold bonds</strong> combine a coupon with exposure to the gold price. Their coupon is not their total return or a comparable conventional bond yield.</p><p><strong>Coupon vs yield</strong> The coupon is based on the bond's face value. Yield also depends on price and repayment cash flows. The source's generic “yield” is not assumed to be yield to maturity.</p><p><strong>Before comparing</strong> Check credit ratings, secured status, call options, amortisation and liquidity. These fields are not supplied by this source and are left unknown.</p><a href="https://www.rbi.org.in/Scripts/FAQView.aspx?Id=79" target="_blank" rel="noopener noreferrer">Read RBI's government securities guide ↗</a></div></dialog>
+</body>
+</html>
