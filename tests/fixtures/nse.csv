@@ -1,0 +1,3 @@
+NSE CBM report - synthetic parser fixture, not market data
+ISIN,Descriptor,Coupon Rate,Maturity Date,Last Trade Price,Last Trade Yield (Annualized) (%),Weighted Average Price,Weighted Average Yield(YTM) (%),No. of Trades,Trade Date
+INE03K307215,Example Finance Limited,10.80,02-Nov-2029,101.25,10.25,101.10,10.30,3,06-Nov-2026

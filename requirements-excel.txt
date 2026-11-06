@@ -1,0 +1,2 @@
+# Optional: read NSDL's legacy binary .xls reports without converting to CSV/XLSX.
+xlrd>=2.0.1,<3

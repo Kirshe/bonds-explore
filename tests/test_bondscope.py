@@ -98,7 +98,9 @@ class StorageTests(unittest.TestCase):
         result = refresh(self.db, fail)
         after = read_market(self.db)
         self.assertFalse(result["ok"])
-        self.assertEqual(before["bonds"], after["bonds"])
+        # Collection status changes; the stored observations do not.
+        strip_status = lambda rows: [{k: v for k, v in row.items() if k != "source_status"} for row in rows]
+        self.assertEqual(strip_status(before["bonds"]), strip_status(after["bonds"]))
         self.assertEqual(before["source"]["observed_at"], after["source"]["observed_at"])
         self.assertEqual(after["source"]["status"], "error")
         self.assertIn("Network unavailable", after["source"]["error"])
