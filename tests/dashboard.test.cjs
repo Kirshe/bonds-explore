@@ -10,8 +10,9 @@ const response = spawnSync("python", ["-c", "import json,tempfile; from pathlib 
 assert.equal(response.status, 0, response.stderr);
 const market = JSON.parse(response.stdout);
 
-function harness(data = market) {
+function harness(data = market, mode = "live") {
   const elements = new Map();
+  const requests = [];
   function element(selector) {
     if (!elements.has(selector)) elements.set(selector, {
       textContent: "", innerHTML: "", value: "", hidden: false, disabled: false,
@@ -28,10 +29,14 @@ function harness(data = market) {
   let lastBlob;
   const context = vm.createContext({
     document: {
+      documentElement: { dataset: { mode } },
       querySelector: element, querySelectorAll: () => [],
       addEventListener() {}, createElement: tag => element(`created:${tag}`),
     },
-    fetch: async url => ({ ok: true, json: async () => url === "/api/refresh" ? { ok: false, status: "error", message: "Network unavailable. Existing data retained." } : structuredClone(data) }),
+    fetch: async (url, options) => {
+      requests.push({ url, options });
+      return { ok: true, json: async () => url.endsWith("api/refresh") ? { ok: false, status: "error", message: "Network unavailable. Existing data retained." } : structuredClone(data) };
+    },
     Blob, URL: { createObjectURL(blob) { lastBlob = blob; return "blob:test"; }, revokeObjectURL() {} },
     setTimeout() {}, console,
   });
@@ -42,6 +47,7 @@ function harness(data = market) {
     run(code) { return vm.runInContext(code, context); },
     async fire(selector, name = "click", event = {}) { await element(selector).listeners[name](event); },
     csv: async () => lastBlob.text(),
+    requests,
   };
 }
 
@@ -127,6 +133,42 @@ test("dashboard interactions preserve filtering, pagination, provenance and refr
     assert.equal(app.element("#refresh").disabled, false);
     assert.equal(app.element("#metric-count").textContent, "28");
     assert.match(app.element("#notice-title").textContent, /snapshot/);
+  });
+});
+
+test("static Pages mode uses relative JSON, reloads without a backend and ages stale snapshots", async t => {
+  const published = structuredClone(market);
+  published.publication = { schema_version: 1, mode: "static", generated_at: "2026-11-07T00:17:00+00:00", collection_status: "error" };
+  const app = harness(published, "static");
+  await app.ready();
+
+  await t.test("initial data and assets work under a repository subpath", () => {
+    assert.equal(app.requests[0].url, "./market.json");
+    assert.equal(app.requests[0].options.cache, "no-store");
+    assert.equal(new URL(app.requests[0].url, "https://example.github.io/bondscrapper/").pathname, "/bondscrapper/market.json");
+    assert.equal(app.element("#metric-count").textContent, "28");
+    assert.equal(app.element("#refresh span").textContent, "Reload published data");
+    assert.match(app.element("#publication-note").textContent, /Source data may be older/);
+    assert.match(app.element("#publication-note").textContent, /collection runs separately/);
+  });
+
+  await t.test("refresh performs only a JSON GET and keeps filters", async () => {
+    await app.fire("#source-filter", "change", { target: { value: "bondbazaar" } });
+    await app.fire("#refresh");
+    assert.equal(app.requests.length, 2);
+    assert.equal(app.requests.every(request => request.url === "./market.json" && !request.options.method), true);
+    assert.equal(app.run("state.source"), "bondbazaar");
+    assert.equal(app.element("#refresh").disabled, false);
+    assert.match(app.element("#feedback").textContent, /Published data reloaded/);
+  });
+
+  await t.test("source ages and maturity exclusions advance after publication", () => {
+    app.run("state.market.bonds[0].maturity_date = '2026-11-08'; state.market.bonds[0].instrument_status = 'outstanding'");
+    app.run("agePublishedData(state.market, new Date('2026-11-09T06:00:00Z'))");
+    assert.equal(app.run("state.market.sources.find(source => source.id === 'bondbazaar').stale"), true);
+    assert.equal(app.run("state.market.bonds[0].instrument_status"), "matured");
+    assert.equal(app.run("filteredBonds().length"), 27);
+    assert.equal(app.run("state.market.overview.yield_groups.find(group => group.kind === 'quoted').yield_count"), 22);
   });
 });
 

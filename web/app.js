@@ -1,6 +1,9 @@
 "use strict";
 
 const $ = selector => document.querySelector(selector);
+const STATIC_MODE = document.documentElement?.dataset.mode === "static";
+const MARKET_URL = STATIC_MODE ? "./market.json" : "./api/bonds";
+const REFRESH_LABEL = STATIC_MODE ? "Reload published data" : "Refresh listings";
 const state = { market: null, category: "", query: "", yield: "", payout: "", source: "", basis: "", status: "active", sort: "issuer", direction: 1, page: 1, pageSize: 10 };
 const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 const pct = value => value == null ? "—" : `${Number(value).toFixed(2)}%`;
@@ -11,10 +14,48 @@ const safeURL = value => /^https:\/\//i.test(String(value)) ? escapeHTML(value) 
 const inactive = bond => ["matured", "redeemed"].includes(bond.instrument_status);
 const money = value => value == null ? "Not published" : `₹${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 4 })}`;
 
+function agePublishedData(market, now = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now).map(part => [part.type, part.value]));
+  const today = `${parts.year}-${parts.month}-${parts.day}`;
+  const sourceMap = new Map(market.sources.map(source => {
+    source.stale = !source.observed_at || now - new Date(source.observed_at) > 86400000;
+    return [source.id, source];
+  }));
+  for (const bond of market.bonds) {
+    bond.source_stale = sourceMap.get(bond.source_id)?.stale ?? true;
+    if (bond.maturity_date && bond.maturity_date <= today && !["redeemed", "defaulted"].includes(bond.instrument_status)) bond.instrument_status = "matured";
+  }
+  // A published file can outlive the next scheduled update. Recompute date-
+  // dependent exclusions in the browser instead of freezing them at build time.
+  const conventional = market.bonds.filter(bond => bond.category !== "Sovereign gold" && !["matured", "redeemed", "defaulted"].includes(bond.instrument_status));
+  const median = values => {
+    if (!values.length) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
+  for (const group of market.overview.yield_groups) {
+    const bonds = conventional.filter(bond => bond.yield_kind === group.kind);
+    const values = bonds.filter(bond => bond.yield_pct != null).map(bond => bond.yield_pct);
+    group.yield_count = values.length;
+    group.median_yield = median(values);
+    group.min_yield = values.length ? Math.min(...values) : null;
+    group.max_yield = values.length ? Math.max(...values) : null;
+    group.categories = [...new Set(bonds.map(bond => bond.category))].map(name => {
+      const rows = bonds.filter(bond => bond.category === name);
+      return { name, count: rows.length, median_yield: median(rows.filter(bond => bond.yield_pct != null).map(bond => bond.yield_pct)) };
+    });
+  }
+  return market;
+}
+
 async function loadMarket() {
-  const response = await fetch("/api/bonds");
+  const response = await fetch(MARKET_URL, { cache: "no-store" });
   if (!response.ok) throw new Error(`Unable to load observations (HTTP ${response.status}).`);
-  state.market = await response.json();
+  const market = await response.json();
+  if (!Array.isArray(market.bonds) || !Array.isArray(market.sources) || !Array.isArray(market.overview?.yield_groups) || !Array.isArray(market.export_fields)) throw new Error("The published market data is incomplete.");
+  if (STATIC_MODE && market.publication?.schema_version !== 1) throw new Error("Unsupported published data version; reload the page after the next deployment.");
+  state.market = STATIC_MODE ? agePublishedData(market) : market;
   $("#source-filter").innerHTML = '<option value="">All sources</option>' + state.market.sources.map(source => `<option value="${escapeHTML(source.id)}">${escapeHTML(source.name)}</option>`).join("");
   $("#source-filter").value = state.source;
   $("#basis-filter").innerHTML = '<option value="">All yield bases</option>' + state.market.overview.yield_groups.map(group => `<option value="${escapeHTML(group.kind)}">${escapeHTML(group.label)}</option>`).join("") + '<option value="reference">Reference data</option>';
@@ -42,6 +83,10 @@ function renderOverview() {
   const snapshot = available.filter(source => source.mode === "snapshot").length;
   $("#notice-title").textContent = snapshot ? "Includes source snapshot data · availability unverified." : "Source observations · availability unverified.";
   $("#notice-copy").textContent = `${available.length}/${sources.length} feeds have data. Quote/report dates are separate from collection times; unknown dates remain unknown.`;
+  if (STATIC_MODE) {
+    $("#publication-note").hidden = false;
+    $("#publication-note").textContent = `Published snapshot generated ${formatTime(state.market.publication.generated_at)}. Source data may be older. Reload checks the latest published file; collection runs separately on a schedule.`;
+  }
   $("#chart-basis").textContent = selected?.label || "Select a yield basis";
   const categories = selected?.categories.filter(group => group.median_yield != null).sort((a, b) => b.median_yield - a.median_yield) || [];
   const max = Math.max(1, ...categories.map(group => group.median_yield));
@@ -182,14 +227,17 @@ $("#refresh").addEventListener("click", async () => {
   const button = $("#refresh");
   button.disabled = true;
   button.classList.add("refreshing");
-  button.querySelector("span").textContent = "Collecting…";
+  button.querySelector("span").textContent = STATIC_MODE ? "Reloading…" : "Collecting…";
   try {
-    const response = await fetch("/api/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state.source ? { source_ids: [state.source] } : {}) });
-    const result = await response.json();
-    feedback(result.message || result.error || "Unexpected refresh response.", result.ok);
+    if (!STATIC_MODE) {
+      const response = await fetch("./api/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state.source ? { source_ids: [state.source] } : {}) });
+      const result = await response.json();
+      feedback(result.message || result.error || "Unexpected refresh response.", result.ok);
+    }
     await loadMarket();
+    if (STATIC_MODE) feedback("Published data reloaded. Source collection dates are shown below.", true);
   } catch (error) { feedback(error.message); }
-  finally { button.disabled = false; button.classList.remove("refreshing"); button.querySelector("span").textContent = "Refresh listings"; }
+  finally { button.disabled = false; button.classList.remove("refreshing"); button.querySelector("span").textContent = REFRESH_LABEL; }
 });
 $("#search").addEventListener("input", event => { state.query = event.target.value; state.page = 1; renderTable(); });
 for (const [id, field] of [["yield-filter", "yield"], ["payout-filter", "payout"], ["source-filter", "source"], ["basis-filter", "basis"], ["status-filter", "status"]]) {
@@ -229,10 +277,13 @@ document.addEventListener("keydown", event => {
   if (event.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName) && !document.querySelector("dialog[open]")) { event.preventDefault(); $("#search").focus(); }
 });
 
+$("#refresh").querySelector("span").textContent = REFRESH_LABEL;
+if (STATIC_MODE) $("#refresh").title = "Reload the latest published snapshot. Collection runs separately on a schedule.";
+
 loadMarket().catch(error => {
-  feedback(`${error.message} Start the app with “python -m bondscope serve” and reload this page.`);
+  feedback(`${error.message} ${STATIC_MODE ? "For local use, serve the build with “python -m bondscope preview”." : "Start the app with “python -m bondscope serve” and reload this page."}`);
   $("#notice-title").textContent = "Unable to load source observations.";
-  $("#notice-copy").textContent = "The local API did not respond.";
+  $("#notice-copy").textContent = STATIC_MODE ? "The published snapshot could not be loaded." : "The local API did not respond.";
   $("#bond-rows").innerHTML = '<tr><td colspan="9" class="empty">Observations could not be loaded. Reload the page once the server is available.</td></tr>';
   $("#results-count").textContent = "Data unavailable";
   $("#export").disabled = $("#prev").disabled = $("#next").disabled = true;

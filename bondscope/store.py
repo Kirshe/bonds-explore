@@ -207,8 +207,11 @@ def read_market(path=DEFAULT_DB):
     sources = [_source_info(sid, batches.get(sid), states.get(sid)) for sid in SOURCES]
     source_map = {s["id"]: s for s in sources}
     bonds = []
-    for sid, batch in batches.items():
-        if sid not in source_map:
+    # A restored database may insert batches in a different order. Keep source
+    # ordering (and equal-date reference precedence) independent of SQLite IDs.
+    for sid in SOURCES:
+        batch = batches.get(sid)
+        if batch is None:
             continue
         source = source_map[sid]
         for raw in json.loads(batch["payload"]):

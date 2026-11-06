@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 
 from .store import DEFAULT_DB, EXPORT_FIELDS, ROOT, import_report, initialize, read_market, refresh
 from .sources import SOURCES
+from .publishing import base_path, build_site, preview_handler
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -92,7 +93,51 @@ def main():
     report.add_argument("--as-of", type=lambda text: date.fromisoformat(text).isoformat(), help="Report date YYYY-MM-DD; never inferred from import time")
     export = sub.add_parser("export", help="Export the latest data to CSV")
     export.add_argument("--output", type=Path, default=Path("bonds.csv"))
+    build = sub.add_parser("build", help="Build a backend-free dashboard for GitHub Pages or local preview")
+    build.add_argument("--output", type=Path, default=Path("dist"))
+    build.add_argument("--scrape", action="store_true", help="Collect sources before building; retain last-good data for failed sources")
+    build.add_argument("--source", choices=SOURCES, action="append", help="Select feeds for --scrape; repeat for several")
+    build.add_argument("--restore-state", type=Path, help="Restore a prior source-state JSON into an empty --db")
+    build.add_argument("--state-output", type=Path, help="Write resumable source state outside the public build directory")
+    build.add_argument("--strict", action="store_true", help="Exit 1 if collection was partial/failed, even when a valid site was built")
+    preview = sub.add_parser("preview", help="Serve the static build without the scraper API")
+    preview.add_argument("--directory", type=Path, default=Path("dist"))
+    preview.add_argument("--host", default="127.0.0.1")
+    preview.add_argument("--port", type=int, default=8000)
+    preview.add_argument("--base-path", type=base_path, default="/", help="Test a project Pages URL such as /bondscrapper/")
     args = parser.parse_args()
+    if args.command == "build":
+        try:
+            result = build_site(args.db, args.output, scrape=args.scrape, source_ids=args.source,
+                                state_input=args.restore_state, state_output=args.state_output)
+        except (ValueError, OSError) as error:
+            print(f"Build failed: {error}", file=sys.stderr)
+            return 2
+        collection = result["collection"]
+        if collection:
+            print(collection["message"])
+            for item in collection["results"]:
+                print(f"  {item['source_id']}: {item['message']}")
+            if not collection["ok"]:
+                print("Warning: publishing retained data and source errors; collection was incomplete.", file=sys.stderr)
+        print(f"Built {result['observations']} observations at {result['output']}")
+        print(f"Preview with: python -m bondscope preview --directory {result['output']}")
+        return 1 if args.strict and collection and not collection["ok"] else 0
+    if args.command == "preview":
+        try:
+            handler = preview_handler(args.directory, args.base_path)
+            server = ThreadingHTTPServer((args.host, args.port), handler)
+        except (ValueError, OSError) as error:
+            print(f"Preview failed: {error}", file=sys.stderr)
+            return 2
+        print(f"Static BondScope preview: http://{args.host}:{server.server_port}{args.base_path}", flush=True)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            server.server_close()
+        return 0
     initialize(args.db)
     if args.command == "scrape":
         result = refresh(args.db, source_ids=args.source)
