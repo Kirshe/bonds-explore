@@ -10,7 +10,7 @@ const pct = value => value == null ? "—" : `${Number(value).toFixed(2)}%`;
 const formatTime = value => !value ? "Not published" : /^\d{4}-\d{2}-\d{2}$/.test(value) ? value + " (date only)" : new Date(value).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) + " IST";
 const typeLabel = category => ({ "State government": "State govt", "Central government": "Central govt", "Corporate / NBFC": "Corporate / NBFC", "Sovereign gold": "Sovereign gold" }[category] || category);
 const typeClass = category => category === "Sovereign gold" ? "gold" : category === "Corporate / NBFC" ? "corporate" : "";
-const safeURL = value => /^https:\/\//i.test(String(value)) ? escapeHTML(value) : "#methodology";
+const safeURL = value => /^https:\/\//i.test(String(value)) ? escapeHTML(value) : "#explorer";
 const inactive = bond => ["matured", "redeemed"].includes(bond.instrument_status);
 const money = value => value == null ? "Not published" : `₹${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 4 })}`;
 
@@ -60,41 +60,11 @@ async function loadMarket() {
   $("#source-filter").value = state.source;
   $("#basis-filter").innerHTML = '<option value="">All yield bases</option>' + state.market.overview.yield_groups.map(group => `<option value="${escapeHTML(group.kind)}">${escapeHTML(group.label)}</option>`).join("") + '<option value="reference">Reference data</option>';
   $("#basis-filter").value = state.basis;
-  renderOverview();
-  renderSources();
-  renderTable();
-}
-
-function renderOverview() {
-  const { overview: data, sources } = state.market;
-  const available = sources.filter(source => source.count > 0);
-  const groups = data.yield_groups.filter(group => group.yield_count > 0);
-  // Pooling unrelated yield definitions would create a misleading aggregate.
-  const selected = state.basis ? data.yield_groups.find(group => group.kind === state.basis) : groups.length === 1 ? groups[0] : null;
-  $("#metric-count").textContent = data.count.toLocaleString("en-IN");
-  $("#metric-categories").textContent = `${data.observation_count} observations · ${data.categories.length} categories`;
-  $("#median-label").textContent = selected ? `Median · ${selected.label}` : "Median · choose a yield basis";
-  $("#metric-median").innerHTML = selected?.median_yield == null ? "—" : `${selected.median_yield.toFixed(2)}<small>%</small>`;
-  $("#metric-yield-count").textContent = selected ? `${selected.yield_count} conventional observations · same basis` : "Choose a yield basis to compare like for like";
-  $("#metric-range").textContent = selected ? `${pct(selected.min_yield)} – ${pct(selected.max_yield)}` : "—";
-  $("#source-count").textContent = String(available.length).padStart(2, "0");
-  $("#metric-source").textContent = `${sources.length} feeds configured · ${sources.filter(source => source.status === "error").length} refresh errors`;
-  $("#total-pill").textContent = `${data.observation_count} observations`;
-  const snapshot = available.filter(source => source.mode === "snapshot").length;
-  $("#notice-title").textContent = snapshot ? "Includes source snapshot data · availability unverified." : "Source observations · availability unverified.";
-  $("#notice-copy").textContent = `${available.length}/${sources.length} feeds have data. Quote/report dates are separate from collection times; unknown dates remain unknown.`;
   if (STATIC_MODE) {
     $("#publication-note").hidden = false;
-    $("#publication-note").textContent = `Published snapshot generated ${formatTime(state.market.publication.generated_at)}. Source data may be older. Reload checks the latest published file; collection runs separately on a schedule.`;
+    $("#publication-note").textContent = `Published ${formatTime(state.market.publication.generated_at)} · Quotes may be older.`;
   }
-  $("#chart-basis").textContent = selected?.label || "Select a yield basis";
-  const categories = selected?.categories.filter(group => group.median_yield != null).sort((a, b) => b.median_yield - a.median_yield) || [];
-  const max = Math.max(1, ...categories.map(group => group.median_yield));
-  $("#yield-chart").innerHTML = categories.length ? categories.map(group => `<div class="chart-row"><span class="chart-label">${escapeHTML(typeLabel(group.name))}</span><div class="chart-track"><div class="chart-bar" style="width:${(group.median_yield / max * 100).toFixed(1)}%"></div></div><span class="chart-value">${pct(group.median_yield)}</span></div>`).join("") : '<p class="chart-footnote">Select a yield basis with collected observations. Unrelated yield definitions are shown separately.</p>';
-}
-
-function renderSources() {
-  $("#source-list").innerHTML = state.market.sources.map(source => `<article class="source-card"><div class="source-card-head"><strong>${escapeHTML(source.name)}</strong><span class="pill ${source.status === "error" || source.mode === "snapshot" ? "amber" : "neutral"}">${escapeHTML(source.mode === "empty" ? "No records" : source.mode)}</span></div><dl><div><dt>Records / role</dt><dd>${source.count} / ${escapeHTML(source.role)}</dd></div><div><dt>Collected</dt><dd>${source.observed_at ? formatTime(source.observed_at) : "Not collected"}${source.observed_at && source.stale ? " · older than 24h" : ""}</dd></div><div><dt>Last fetch attempt</dt><dd>${source.attempted_at ? formatTime(source.attempted_at) : "Not attempted"}</dd></div><div><dt>Collection status</dt><dd>${escapeHTML(source.status)}</dd></div></dl>${source.error ? `<p class="source-error">${escapeHTML(source.error)}. Previous records retained.</p>` : ""}${source.note ? `<p class="source-note">${escapeHTML(source.note)}</p>` : ""}<a href="${safeURL(source.url)}" target="_blank" rel="noopener noreferrer">Original source ↗</a></article>`).join("");
+  renderTable();
 }
 
 function filteredBonds() {
@@ -141,8 +111,8 @@ function renderTable() {
     const gold = bond.category === "Sovereign gold";
     const icon = /government/.test(bond.category) ? "IN" : gold ? "Au" : bond.issuer.split(/\s+/).slice(0, 2).map(word => word[0]).join("");
     const status = bond.instrument_status !== "unknown" ? `<span class="row-status ${bond.instrument_status === "defaulted" ? "defaulted" : ""}">${escapeHTML(bond.instrument_status)}</span>` : "";
-    return `<tr><td><div class="issuer-cell"><span class="issuer-icon" aria-hidden="true">${escapeHTML(icon)}</span><div><button class="issuer-name" data-record-id="${escapeHTML(bond.id)}">${escapeHTML(bond.issuer)}</button><div class="isin">${escapeHTML(bond.isin || "ISIN not published · source identity")}</div>${status}</div></div></td><td><span class="type-badge ${typeClass(bond.category)}">${escapeHTML(typeLabel(bond.category))}</span></td><td><span class="quoted-yield ${gold ? "gold" : ""}">${gold ? "N/C" : pct(bond.yield_pct)}</span><small class="basis-label">${escapeHTML(bond.yield_label)}</small></td><td>${pct(bond.coupon_pct)}</td><td>${escapeHTML(bond.rating || "Unknown")}</td><td>${escapeHTML(bond.maturity_date || bond.tenure_raw || "Not published")}${!bond.maturity_date && bond.tenure_raw ? '<small class="basis-label">Source tenure · may be outdated</small>' : ""}</td><td>${escapeHTML(bond.payout === "Semi Annual" ? "Semi annual" : bond.payout || "Unknown")}</td><td><a class="source-label" href="${safeURL(bond.source_url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(bond.source)} ↗</a><small class="basis-label">${escapeHTML(bond.data_mode)} · ${escapeHTML(bond.quote_at || bond.report_as_of || "quote date unknown")}</small></td><td><button class="detail-button" data-record-id="${escapeHTML(bond.id)}" aria-label="View ${escapeHTML(bond.issuer)} observation details">↗</button></td></tr>`;
-  }).join("") || '<tr><td class="empty" colspan="9">No bonds match these filters.<br><button id="empty-reset">Clear filters to see all observations</button></td></tr>';
+    return `<tr><td><div class="issuer-cell"><span class="issuer-icon" aria-hidden="true">${escapeHTML(icon)}</span><div><button class="issuer-name" data-record-id="${escapeHTML(bond.id)}">${escapeHTML(bond.issuer)}</button><div class="isin">${escapeHTML(bond.isin || "ISIN not published · source identity")}</div>${status}</div></div></td><td><span class="type-badge ${typeClass(bond.category)}">${escapeHTML(typeLabel(bond.category))}</span></td><td><span class="quoted-yield ${gold ? "gold" : ""}">${gold ? "N/C" : pct(bond.yield_pct)}</span><small class="basis-label">${escapeHTML(bond.yield_label)}</small></td><td>${pct(bond.coupon_pct)}</td><td>${escapeHTML(bond.rating || "Unknown")}</td><td>${escapeHTML(bond.maturity_date || bond.tenure_raw || "Not published")}${!bond.maturity_date && bond.tenure_raw ? '<small class="basis-label">Source tenure · may be outdated</small>' : ""}</td><td>${escapeHTML(bond.payout === "Semi Annual" ? "Semi annual" : bond.payout || "Unknown")}</td><td><button class="detail-button" data-record-id="${escapeHTML(bond.id)}" aria-label="View ${escapeHTML(bond.issuer)} observation details">↗</button></td></tr>`;
+  }).join("") || '<tr><td class="empty" colspan="8">No bonds match these filters.<br><button id="empty-reset">Clear filters to see all observations</button></td></tr>';
   $("#results-count").textContent = bonds.length ? `Showing ${start + 1}–${Math.min(start + state.pageSize, bonds.length)} of ${bonds.length} observations` : "0 matching observations";
   $("#page-label").textContent = `Page ${state.page} of ${pages}`;
   $("#prev").disabled = state.page <= 1;
@@ -162,7 +132,6 @@ function resetFilters() {
   for (const id of ["search", "yield-filter", "payout-filter", "source-filter", "basis-filter"]) $("#" + id).value = "";
   $("#status-filter").value = "active";
   updateTabs();
-  renderOverview();
   renderTable();
 }
 
@@ -179,7 +148,8 @@ function showDetail(identity) {
   if (!bond) return;
   $("#detail-title").textContent = bond.issuer;
   const rows = [
-    ["Source", bond.source], ["Bond type", bond.category], ["Status after reference checks", bond.instrument_status],
+    ["Source", bond.source], ["Collection status", bond.source_status || "unknown"],
+    ["Collection age", bond.source_stale ? "Older than 24 hours" : "Within 24 hours"], ["Bond type", bond.category], ["Status after reference checks", bond.instrument_status],
     ["Status reported by this source", bond.source_instrument_status || "unknown"],
     ["Credit rating", bond.rating || "Not published"], ["Price in rupees", money(bond.price_inr)],
     ["Price per ₹100 face", bond.price_pct_face == null ? "Not published" : String(bond.price_pct_face)],
@@ -235,13 +205,13 @@ $("#refresh").addEventListener("click", async () => {
       feedback(result.message || result.error || "Unexpected refresh response.", result.ok);
     }
     await loadMarket();
-    if (STATIC_MODE) feedback("Published data reloaded. Source collection dates are shown below.", true);
+    if (STATIC_MODE) feedback("Published data reloaded.", true);
   } catch (error) { feedback(error.message); }
   finally { button.disabled = false; button.classList.remove("refreshing"); button.querySelector("span").textContent = REFRESH_LABEL; }
 });
 $("#search").addEventListener("input", event => { state.query = event.target.value; state.page = 1; renderTable(); });
 for (const [id, field] of [["yield-filter", "yield"], ["payout-filter", "payout"], ["source-filter", "source"], ["basis-filter", "basis"], ["status-filter", "status"]]) {
-  $("#" + id).addEventListener("change", event => { state[field] = event.target.value; state.page = 1; renderOverview(); renderTable(); });
+  $("#" + id).addEventListener("change", event => { state[field] = event.target.value; state.page = 1; renderTable(); });
 }
 $("#category-tabs").addEventListener("click", event => {
   const button = event.target.closest("[data-category]");
@@ -268,7 +238,6 @@ $("#bond-rows").addEventListener("click", event => {
   if (button) showDetail(button.dataset.recordId || button.dataset.isin);
   if (event.target.closest("#empty-reset")) resetFilters();
 });
-$("#learn-button").addEventListener("click", () => $("#learn-dialog").showModal());
 document.querySelectorAll("dialog").forEach(dialog => {
   dialog.querySelector(".close-dialog").addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", event => { if (event.target === dialog) { const box = dialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close(); } });
@@ -282,9 +251,7 @@ if (STATIC_MODE) $("#refresh").title = "Reload the latest published snapshot. Co
 
 loadMarket().catch(error => {
   feedback(`${error.message} ${STATIC_MODE ? "For local use, serve the build with “python -m bondscope preview”." : "Start the app with “python -m bondscope serve” and reload this page."}`);
-  $("#notice-title").textContent = "Unable to load source observations.";
-  $("#notice-copy").textContent = STATIC_MODE ? "The published snapshot could not be loaded." : "The local API did not respond.";
-  $("#bond-rows").innerHTML = '<tr><td colspan="9" class="empty">Observations could not be loaded. Reload the page once the server is available.</td></tr>';
+  $("#bond-rows").innerHTML = '<tr><td colspan="8" class="empty">Observations could not be loaded. Reload the page once the server is available.</td></tr>';
   $("#results-count").textContent = "Data unavailable";
   $("#export").disabled = $("#prev").disabled = $("#next").disabled = true;
 });

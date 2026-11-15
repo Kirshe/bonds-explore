@@ -18,12 +18,16 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT / "web"), **kwargs)
 
+    def end_headers(self):
+        # Keep local HTML and JavaScript in sync after interface changes.
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
     def send_json(self, payload, status=200):
         encoded = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(encoded)))
-        self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(encoded)

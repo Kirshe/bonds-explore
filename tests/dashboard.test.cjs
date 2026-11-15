@@ -9,11 +9,15 @@ const { test } = require("node:test");
 const response = spawnSync("python", ["-c", "import json,tempfile; from pathlib import Path; from bondscope.store import read_market; t=tempfile.TemporaryDirectory(); print(json.dumps(read_market(Path(t.name)/'ui.sqlite3'))); t.cleanup()"], { encoding: "utf8" });
 assert.equal(response.status, 0, response.stderr);
 const market = JSON.parse(response.stdout);
+const page = fs.readFileSync("web/index.html", "utf8");
+const pageIds = new Set([...page.matchAll(/id="([^"]+)"/g)].map(match => match[1]));
 
 function harness(data = market, mode = "live") {
   const elements = new Map();
   const requests = [];
   function element(selector) {
+    const id = selector.match(/^#([\w-]+)/)?.[1];
+    if (id) assert.ok(pageIds.has(id), `Script references missing page element: ${selector}`);
     if (!elements.has(selector)) elements.set(selector, {
       textContent: "", innerHTML: "", value: "", hidden: false, disabled: false,
       listeners: {}, attributes: {}, dataset: {},
@@ -55,9 +59,8 @@ test("dashboard interactions preserve filtering, pagination, provenance and refr
   const app = harness();
   await app.ready();
 
-  await t.test("initial overview and first page", () => {
-    assert.equal(app.element("#metric-count").textContent, "28");
-    assert.match(app.element("#notice-title").textContent, /snapshot/);
+  await t.test("explorer opens directly on the first page", () => {
+    assert.equal(app.run("state.market.bonds.length"), 28);
     assert.equal((app.element("#bond-rows").innerHTML.match(/<tr>/g) || []).length, 10);
     assert.equal(app.element("#page-label").textContent, "Page 1 of 3");
     assert.equal(app.element("#prev").disabled, true);
@@ -131,8 +134,7 @@ test("dashboard interactions preserve filtering, pagination, provenance and refr
     await app.fire("#refresh");
     assert.match(app.element("#feedback").textContent, /Existing data retained/);
     assert.equal(app.element("#refresh").disabled, false);
-    assert.equal(app.element("#metric-count").textContent, "28");
-    assert.match(app.element("#notice-title").textContent, /snapshot/);
+    assert.equal(app.run("state.market.bonds.length"), 28);
   });
 });
 
@@ -146,10 +148,9 @@ test("static Pages mode uses relative JSON, reloads without a backend and ages s
     assert.equal(app.requests[0].url, "./market.json");
     assert.equal(app.requests[0].options.cache, "no-store");
     assert.equal(new URL(app.requests[0].url, "https://example.github.io/bondscrapper/").pathname, "/bondscrapper/market.json");
-    assert.equal(app.element("#metric-count").textContent, "28");
+    assert.equal(app.run("state.market.bonds.length"), 28);
     assert.equal(app.element("#refresh span").textContent, "Reload published data");
-    assert.match(app.element("#publication-note").textContent, /Source data may be older/);
-    assert.match(app.element("#publication-note").textContent, /collection runs separately/);
+    assert.match(app.element("#publication-note").textContent, /Quotes may be older/);
   });
 
   await t.test("refresh performs only a JSON GET and keeps filters", async () => {
@@ -179,17 +180,14 @@ test("multiple sources retain quote identity, yield basis and per-row export pro
   const app = harness(data);
   await app.ready();
 
-  await t.test("different yield definitions have no pooled median", () => {
-    assert.equal(app.element("#metric-median").innerHTML, "—");
-    assert.match(app.element("#metric-yield-count").textContent, /Choose a yield basis/);
-    assert.match(app.element("#source-list").innerHTML, /NSDL/);
-    assert.match(app.element("#source-list").innerHTML, /Not collected/);
+  await t.test("yield bases stay labelled in the table", () => {
+    assert.match(app.element("#basis-filter").innerHTML, /Weighted average traded YTM/);
+    assert.match(app.element("#bond-rows").innerHTML, /basis-label/);
   });
 
-  await t.test("basis filter selects its own statistics and rows", async () => {
+  await t.test("basis filter selects matching rows", async () => {
     await app.fire("#basis-filter", "change", { target: { value: "indicative" } });
     assert.equal(app.run("filteredBonds().length"), 2);
-    assert.match(app.element("#metric-median").innerHTML, /^8\.88/);
     assert.equal(app.run("filteredBonds().every(b => b.source_id === 'grip')"), true);
     await app.fire("#reset");
   });
@@ -222,4 +220,17 @@ test("multiple sources retain quote identity, yield basis and per-row export pro
     assert.equal(app.run("filteredBonds().length"), 1);
     assert.match(app.element("#bond-rows").innerHTML, /matured/);
   });
+});
+
+test("page focuses on the explorer and keeps provenance in details", async () => {
+  for (const id of ["overview", "methodology", "source-list", "yield-chart", "learn-dialog", "metric-count"]) {
+    assert.equal(pageIds.has(id), false, id);
+  }
+  assert.doesNotMatch(page, /href="#(?:overview|methodology)"/);
+  const app = harness();
+  await app.ready();
+  app.run("showDetail(state.market.bonds[0].id)");
+  assert.match(app.element("#detail-body").innerHTML, /Collection status/);
+  assert.match(app.element("#detail-body").innerHTML, /View original source/);
+  assert.match(app.element("#detail-body").innerHTML, /Quote timestamp/);
 });

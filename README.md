@@ -34,6 +34,8 @@ python -m bondscope build --scrape --source nse --source grip --output dist
 
 `build --scrape` still builds a valid site if a provider fails, retaining its last-good rows and exposing its error. It exits 0 when the static bundle is successfully built. Add `--strict` to exit 1 for partial/failed collection even if the retained-data build succeeds. Invalid state or a fatal build error exits 2. A plain `build` does not collect data. Successful building or recent publication does not imply fresh quotes.
 
+The website opens directly to the bond explorer, with search, filters, sorting, details and CSV export. Collection mechanics and source coverage are documented below rather than displayed as separate overview or source panels.
+
 The static button is **Reload published data**: it reads `market.json` again and never starts scraping. Search, filters, sorting, details and CSV export run in the browser. The publication timestamp is shown separately from source collection/quote dates. Collection-age indicators and maturity exclusions are recalculated at browser load, so an old publication does not freeze them in time.
 
 ## Local collector and optional live server
@@ -60,7 +62,7 @@ python -m bondscope sources
 python -m bondscope export --output bonds.csv
 ```
 
-A partial or failed scrape exits with status 1. Sources that fail keep their previous successful batch. The local API-backed dashboard refreshes the selected source, or all sources when **All sources** is selected. The static dashboard reloads published JSON only. Source cards distinguish configured feeds, collected records, snapshots, imports and failures. Configured does not mean successfully connected.
+A partial or failed scrape exits with status 1. Sources that fail keep their previous successful batch. The local API-backed dashboard refreshes the selected source, or all sources when **All sources** is selected. The static dashboard reloads published JSON only. The website focuses on the bond explorer. Source links, collection method, dates, freshness and collection status are available in each bond’s details. Use `python -m bondscope sources` for a feed-by-feed summary. Configured does not mean successfully connected.
 
 ## Publish to GitHub Pages
 
@@ -83,7 +85,7 @@ Each run:
 
 The data branch is created automatically on the first successful build. It contains only resumable source-state JSON; application code stays on the default branch. State persistence does not rely on expiring Actions artifacts or caches. Workflow concurrency serialises the whole cycle. Failure to read existing remote state is fatal rather than silently resetting the dataset. Invalid state, test/build errors, or a failed state push stop publication and leave the previously deployed site in place.
 
-This publishes the original labelled snapshot if no source has ever collected successfully. First publication is not evidence of a successful live scrape. Source failures are included in the Actions summary and on the dashboard.
+This publishes the original labelled snapshot if no source has ever collected successfully. First publication is not evidence of a successful live scrape. Source failures are included in the Actions summary and published JSON; per-row collection status is available in bond details.
 
 `dist/` contains exactly `index.html`, `app.js`, `styles.css`, `favicon.svg`, `market.json` and `.nojekyll`. SQLite files, resumable raw state and downloaded reports are excluded. The local SQLite database keeps historical batches; the resumable JSON keeps the latest raw batch per source plus collection status. Git commits on the data branch retain earlier state revisions. That branch is visible wherever your repository's other branches are visible.
 
@@ -172,7 +174,7 @@ These optional packages are separate from the dependency-free application lockfi
 - **Enrichment:** reference data fills missing maturity/coupon/rating/face-value/payout fields by exact ISIN. `field_sources` records the provider and report date. Conflicting existing values remain intact and are exposed in `conflicts` and bond details. Values are not treated as independently verified merely because they appear in a reference file.
 - **Status:** dated reference evidence supplies outstanding/redeemed/defaulted status. The newest available report date takes precedence; with equal dates, defaulted/redeemed evidence takes precedence. Original source status is preserved separately from status after reference checks. Maturity dates on or before the Indian calendar day mark records matured. Unknown status does not mean available for purchase.
 - **Inactive/defaulted observations:** matured/redeemed rows are hidden by default but can be included using the status filter. Defaulted rows remain visible with a badge. Gold, matured, redeemed and defaulted rows are excluded from yield statistics.
-- **Freshness:** collection time, report date and quote timestamp remain separate. Collection age over 24 hours is shown on source cards; it is not a guarantee of quote freshness. Unknown or old quote/report dates remain visible even after a recent collection.
+- **Freshness:** collection time, report date and quote timestamp remain separate. Collection age over 24 hours is shown in bond details; it is not a guarantee of quote freshness. Unknown or old quote/report dates remain visible even after a recent collection.
 
 The repository retains the original 28-listing, manually transcribed Bondbazaar snapshot observed on **6 November 2026**. It is labelled `snapshot`, not a successful automated scrape. This source's quote dates are unknown and its published tenures may already be outdated.
 
@@ -214,4 +216,4 @@ node tests/dashboard.test.cjs
 
 Tests cover parser schemas, price/yield separation, absent ISINs, typed XLSX data, migration, partial refreshes, report import, independent cooldowns, status chronology, reference conflicts, API behavior, source/basis filters, distinct observation details and CSV provenance. Fixtures are synthetic/reconstructed, not captured production HTML/workbooks. Legacy XLS needs verification with `xlrd` and real source files. Static publishing tests cover backend-free bundles, project subpaths, offline CLI builds, restore validation, failed-source retention and the actual state-branch script against a local bare Git remote. HTTP tests run real request/response handling through in-memory connections; JavaScript tests use a minimal DOM harness, including static-only JSON requests and reload behavior.
 
-This sandbox denies local sockets and Chromium startup, so running-server and visual browser verification could not be completed here. A live GitHub Actions deployment has not been executed from this environment. Test locally after starting the server. The educational guide links to [RBI's government securities primer](https://www.rbi.org.in/Scripts/FAQView.aspx?Id=79). This application provides research information, not investment recommendations.
+This sandbox denies local sockets and Chromium startup, so running-server and visual browser verification could not be completed here. A live GitHub Actions deployment has not been executed from this environment. Test locally after starting the server. For background, see [RBI's government securities primer](https://www.rbi.org.in/Scripts/FAQView.aspx?Id=79). This application provides research information, not investment recommendations.

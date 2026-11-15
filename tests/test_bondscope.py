@@ -158,6 +158,7 @@ class ServerTests(unittest.TestCase):
         server = SimpleNamespace(server_name="localhost", server_port=8000)
         self.handler(connection, ("127.0.0.1", 12345), server)
         head, _, body = output.getvalue().partition(b"\r\n\r\n")
+        self.response_headers = head.decode("iso-8859-1")
         return int(head.split(b" ")[1]), body
 
     def test_page_assets_and_api(self):
@@ -168,6 +169,16 @@ class ServerTests(unittest.TestCase):
         status, data = self.request("GET", "/api/bonds")
         self.assertEqual(status, 200)
         self.assertEqual(len(json.loads(data)["bonds"]), 28)
+
+    def test_versioned_assets_and_html_are_not_cached(self):
+        for path in ["/", "/app.js?v=2", "/styles.css?v=2", "/api/bonds"]:
+            status, data = self.request("GET", path)
+            self.assertEqual(status, 200, path)
+            self.assertTrue(data)
+            self.assertIn("Cache-Control: no-store", self.response_headers)
+        _, html = self.request("GET", "/")
+        self.assertIn(b'./app.js?v=2', html)
+        self.assertIn(b'./styles.css?v=2', html)
 
     def test_private_files_are_not_served(self):
         for path in ["/data/bonds.sqlite3", "/../README.md", "/api/no-such-route"]:
