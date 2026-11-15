@@ -1,8 +1,8 @@
-# Working on BondScope India
+# Working on Bonds Explore
 
 ## Project overview
 
-BondScope India collects public Indian bond observations, imports downloaded
+Bonds Explore collects public Indian bond observations, imports downloaded
 reports, and displays them in a dashboard. Read `README.md` for source coverage,
 CLI options, collection limits, and deployment setup.
 
@@ -42,7 +42,7 @@ Keep both dashboard modes working:
   `GET /api/sources`, and `POST /api/refresh`. The refresh button collects data.
 - **Static:** `build` writes dashboard assets and `market.json` to `dist/`.
   The HTML mode marker selects static behavior in `web/app.js`. The browser
-  fetches relative `./market.json`; its reload button only reloads that file.
+  fetches relative `./market.json` on page load; no refresh button is published.
   Search, filtering, sorting, pagination, details, and CSV export run locally
   in the browser. Preserve relative URLs for project Pages subpaths.
 
@@ -114,7 +114,7 @@ python -m bondscope build
 python -m bondscope preview
 
 # Check project-site paths.
-python -m bondscope preview --base-path /bondscrapper/ --port 8080
+python -m bondscope preview --base-path /bonds-explore/ --port 8080
 
 # Network collection, selected feeds, and report import.
 python -m bondscope scrape --source nse --source grip

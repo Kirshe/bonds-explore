@@ -16,6 +16,7 @@ function harness(data = market, mode = "live") {
   const elements = new Map();
   const requests = [];
   function element(selector) {
+    if (mode === "static" && /^#refresh(?:\s|$)/.test(selector)) return null;
     const id = selector.match(/^#([\w-]+)/)?.[1];
     if (id) assert.ok(pageIds.has(id), `Script references missing page element: ${selector}`);
     if (!elements.has(selector)) elements.set(selector, {
@@ -138,7 +139,7 @@ test("dashboard interactions preserve filtering, pagination, provenance and refr
   });
 });
 
-test("static Pages mode uses relative JSON, reloads without a backend and ages stale snapshots", async t => {
+test("static Pages mode loads relative JSON without refresh controls and ages stale snapshots", async t => {
   const published = structuredClone(market);
   published.publication = { schema_version: 1, mode: "static", generated_at: "2026-11-07T00:17:00+00:00", collection_status: "error" };
   const app = harness(published, "static");
@@ -149,18 +150,18 @@ test("static Pages mode uses relative JSON, reloads without a backend and ages s
     assert.equal(app.requests[0].options.cache, "no-store");
     assert.equal(new URL(app.requests[0].url, "https://example.github.io/bondscrapper/").pathname, "/bondscrapper/market.json");
     assert.equal(app.run("state.market.bonds.length"), 28);
-    assert.equal(app.element("#refresh span").textContent, "Reload published data");
+    assert.equal(app.element("#refresh"), null);
     assert.match(app.element("#publication-note").textContent, /Quotes may be older/);
   });
 
-  await t.test("refresh performs only a JSON GET and keeps filters", async () => {
+  await t.test("filtering and export work without refresh controls or backend requests", async () => {
     await app.fire("#source-filter", "change", { target: { value: "bondbazaar" } });
-    await app.fire("#refresh");
-    assert.equal(app.requests.length, 2);
-    assert.equal(app.requests.every(request => request.url === "./market.json" && !request.options.method), true);
+    assert.equal(app.requests.length, 1);
+    assert.equal(app.requests[0].url, "./market.json");
     assert.equal(app.run("state.source"), "bondbazaar");
-    assert.equal(app.element("#refresh").disabled, false);
-    assert.match(app.element("#feedback").textContent, /Published data reloaded/);
+    assert.equal(app.run("filteredBonds().length"), 28);
+    await app.fire("#export");
+    assert.equal((await app.csv()).trim().split("\r\n").length, 29);
   });
 
   await t.test("source ages and maturity exclusions advance after publication", () => {

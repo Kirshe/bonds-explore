@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#143c30">
   <meta name="description" content="Search and compare Indian bonds by issuer, yield, rating and maturity.">
-  <title>BondScope — Bond explorer</title>
-  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <title>Bonds Explore — Indian bonds</title>
+  <link rel="icon" href="./favicon.svg?v=2" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap">
   <link rel="stylesheet" href="./styles.css?v=2">
-  <script src="./app.js?v=2" defer></script>
+  <script src="./app.js?v=4" defer></script>
 </head>
 <body>
   <a class="skip" href="#explorer">Skip to bond table</a>
   <header class="topbar">
-    <a class="brand" href="./" aria-label="BondScope home"><img src="./favicon.svg" alt="" width="34" height="34">BondScope<span class="country">INDIA</span></a>
+    <a class="brand" href="./" aria-label="Bonds Explore home"><img src="./favicon.svg?v=2" alt="" width="34" height="34">Bonds Explore<span class="country">INDIA</span></a>
   </header>
 
   <main>
@@ -24,7 +24,9 @@
       <div class="section-title">
         <h1 id="explorer-title">Bond explorer</h1>
         <div class="actions">
+          <!-- live-refresh:start -->
           <button class="button secondary" id="refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6.1 7a7 7 0 0 1 11.6-2L20 8M4 16l2.3 3A7 7 0 0 0 18 17"/></svg><span>Refresh listings</span></button>
+          <!-- live-refresh:end -->
           <button id="export" class="button secondary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"/></svg>Export CSV</button>
         </div>
       </div>

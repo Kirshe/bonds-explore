@@ -39,6 +39,8 @@ class PublishingTests(unittest.TestCase):
         self.assertEqual({p.name for p in self.output.iterdir()}, STATIC_FILES)
         html = (self.output / "index.html").read_text()
         self.assertIn('data-mode="static"', html)
+        self.assertNotIn('id="refresh"', html)
+        self.assertNotIn("live-refresh:", html)
         for path in ("./app.js", "./styles.css", "./favicon.svg"):
             self.assertIn(path, html)
             self.assertTrue(urljoin("https://example.github.io/bondscrapper/", path).startswith("https://example.github.io/bondscrapper/"))

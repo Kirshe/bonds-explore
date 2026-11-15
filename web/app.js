@@ -3,7 +3,6 @@
 const $ = selector => document.querySelector(selector);
 const STATIC_MODE = document.documentElement?.dataset.mode === "static";
 const MARKET_URL = STATIC_MODE ? "./market.json" : "./api/bonds";
-const REFRESH_LABEL = STATIC_MODE ? "Reload published data" : "Refresh listings";
 const state = { market: null, category: "", query: "", yield: "", payout: "", source: "", basis: "", status: "active", sort: "issuer", direction: 1, page: 1, pageSize: 10 };
 const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 const pct = value => value == null ? "—" : `${Number(value).toFixed(2)}%`;
@@ -182,7 +181,7 @@ function exportCSV() {
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `bondscope-india-${new Date().toISOString().slice(0, 10)}.csv`;
+  anchor.download = `bonds-explore-${new Date().toISOString().slice(0, 10)}.csv`;
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -193,22 +192,21 @@ function feedback(message, success = false) {
   $("#feedback").classList.toggle("success", success);
 }
 
-$("#refresh").addEventListener("click", async () => {
-  const button = $("#refresh");
-  button.disabled = true;
-  button.classList.add("refreshing");
-  button.querySelector("span").textContent = STATIC_MODE ? "Reloading…" : "Collecting…";
-  try {
-    if (!STATIC_MODE) {
+if (!STATIC_MODE) {
+  $("#refresh").addEventListener("click", async () => {
+    const button = $("#refresh");
+    button.disabled = true;
+    button.classList.add("refreshing");
+    button.querySelector("span").textContent = "Collecting…";
+    try {
       const response = await fetch("./api/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state.source ? { source_ids: [state.source] } : {}) });
       const result = await response.json();
       feedback(result.message || result.error || "Unexpected refresh response.", result.ok);
-    }
-    await loadMarket();
-    if (STATIC_MODE) feedback("Published data reloaded.", true);
-  } catch (error) { feedback(error.message); }
-  finally { button.disabled = false; button.classList.remove("refreshing"); button.querySelector("span").textContent = REFRESH_LABEL; }
-});
+      await loadMarket();
+    } catch (error) { feedback(error.message); }
+    finally { button.disabled = false; button.classList.remove("refreshing"); button.querySelector("span").textContent = "Refresh listings"; }
+  });
+}
 $("#search").addEventListener("input", event => { state.query = event.target.value; state.page = 1; renderTable(); });
 for (const [id, field] of [["yield-filter", "yield"], ["payout-filter", "payout"], ["source-filter", "source"], ["basis-filter", "basis"], ["status-filter", "status"]]) {
   $("#" + id).addEventListener("change", event => { state[field] = event.target.value; state.page = 1; renderTable(); });
@@ -245,9 +243,6 @@ document.querySelectorAll("dialog").forEach(dialog => {
 document.addEventListener("keydown", event => {
   if (event.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName) && !document.querySelector("dialog[open]")) { event.preventDefault(); $("#search").focus(); }
 });
-
-$("#refresh").querySelector("span").textContent = REFRESH_LABEL;
-if (STATIC_MODE) $("#refresh").title = "Reload the latest published snapshot. Collection runs separately on a schedule.";
 
 loadMarket().catch(error => {
   feedback(`${error.message} ${STATIC_MODE ? "For local use, serve the build with “python -m bondscope preview”." : "Start the app with “python -m bondscope serve” and reload this page."}`);

@@ -1,4 +1,4 @@
-# BondScope India
+# Bonds Explore
 
 An Indian bond market dashboard that can be published as a static GitHub Pages site, with a local CLI for collection, downloaded-report imports, builds and previews. Includes independent source histories, search, filters, sorting, bond details and CSV export. The normal application and CSV/XLSX import paths use Python's standard library. Legacy binary XLS files use the optional `xlrd` reader.
 
@@ -17,10 +17,10 @@ python -m bondscope preview
 Open **http://127.0.0.1:8000**. This serves `dist/`, which contains the dashboard and `market.json`. There is no scraper API in static preview. To simulate the repository subpath used by a project Pages site:
 
 ```bash
-python -m bondscope preview --base-path /bondscrapper/ --port 8080
+python -m bondscope preview --base-path /bonds-explore/ --port 8080
 ```
 
-Open **http://127.0.0.1:8080/bondscrapper/**. Assets and data URLs are relative, so the same bundle also works at a user-site root or custom domain.
+Open **http://127.0.0.1:8080/bonds-explore/**. Assets and data URLs are relative, so the same bundle also works at a user-site root or custom domain.
 
 To collect fresh data and build in one command:
 
@@ -36,7 +36,7 @@ python -m bondscope build --scrape --source nse --source grip --output dist
 
 The website opens directly to the bond explorer, with search, filters, sorting, details and CSV export. Collection mechanics and source coverage are documented below rather than displayed as separate overview or source panels.
 
-The static button is **Reload published data**: it reads `market.json` again and never starts scraping. Search, filters, sorting, details and CSV export run in the browser. The publication timestamp is shown separately from source collection/quote dates. Collection-age indicators and maturity exclusions are recalculated at browser load, so an old publication does not freeze them in time.
+The static site loads `market.json` when opened and has no refresh button. Reload the browser page to fetch the latest publication. Collection runs separately in the scheduled workflow. Search, filters, sorting, details and CSV export run in the browser. The publication timestamp is shown separately from source collection/quote dates. Collection-age indicators and maturity exclusions are recalculated at browser load, so an old publication does not freeze them in time.
 
 ## Local collector and optional live server
 
@@ -62,7 +62,7 @@ python -m bondscope sources
 python -m bondscope export --output bonds.csv
 ```
 
-A partial or failed scrape exits with status 1. Sources that fail keep their previous successful batch. The local API-backed dashboard refreshes the selected source, or all sources when **All sources** is selected. The static dashboard reloads published JSON only. The website focuses on the bond explorer. Source links, collection method, dates, freshness and collection status are available in each bond’s details. Use `python -m bondscope sources` for a feed-by-feed summary. Configured does not mean successfully connected.
+A partial or failed scrape exits with status 1. Sources that fail keep their previous successful batch. The local API-backed dashboard refreshes the selected source, or all sources when **All sources** is selected. The static dashboard reads published JSON on page load. The website focuses on the bond explorer. Source links, collection method, dates, freshness and collection status are available in each bond’s details. Use `python -m bondscope sources` for a feed-by-feed summary. Configured does not mean successfully connected.
 
 ## Publish to GitHub Pages
 
@@ -161,7 +161,7 @@ python -m pip install -r requirements-excel.txt
 uv pip install -r requirements-excel.txt
 ```
 
-These optional packages are separate from the dependency-free application lockfile. Use the same Python environment to run BondScope. Excel date cells and percentage-formatted XLSX/XLS cells retain their types; numeric maturity serials are not guessed from plain CSV values.
+These optional packages are separate from the dependency-free application lockfile. Use the same Python environment to run Bonds Explore. Excel date cells and percentage-formatted XLSX/XLS cells retain their types; numeric maturity serials are not guessed from plain CSV values.
 
 ## Data model and reliability
 
@@ -214,6 +214,6 @@ node --check web/app.js
 node tests/dashboard.test.cjs
 ```
 
-Tests cover parser schemas, price/yield separation, absent ISINs, typed XLSX data, migration, partial refreshes, report import, independent cooldowns, status chronology, reference conflicts, API behavior, source/basis filters, distinct observation details and CSV provenance. Fixtures are synthetic/reconstructed, not captured production HTML/workbooks. Legacy XLS needs verification with `xlrd` and real source files. Static publishing tests cover backend-free bundles, project subpaths, offline CLI builds, restore validation, failed-source retention and the actual state-branch script against a local bare Git remote. HTTP tests run real request/response handling through in-memory connections; JavaScript tests use a minimal DOM harness, including static-only JSON requests and reload behavior.
+Tests cover parser schemas, price/yield separation, absent ISINs, typed XLSX data, migration, partial refreshes, report import, independent cooldowns, status chronology, reference conflicts, API behavior, source/basis filters, distinct observation details and CSV provenance. Fixtures are synthetic/reconstructed, not captured production HTML/workbooks. Legacy XLS needs verification with `xlrd` and real source files. Static publishing tests cover backend-free bundles, project subpaths, offline CLI builds, restore validation, failed-source retention and the actual state-branch script against a local bare Git remote. HTTP tests run real request/response handling through in-memory connections; JavaScript tests use a minimal DOM harness, including static-only JSON requests and operation without a refresh control.
 
 This sandbox denies local sockets and Chromium startup, so running-server and visual browser verification could not be completed here. A live GitHub Actions deployment has not been executed from this environment. Test locally after starting the server. For background, see [RBI's government securities primer](https://www.rbi.org.in/Scripts/FAQView.aspx?Id=79). This application provides research information, not investment recommendations.

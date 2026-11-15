@@ -157,6 +157,11 @@ def build_site(db_path=DEFAULT_DB, output="dist", *, scrape=False, source_ids=No
         if 'data-mode="live"' not in html:
             raise ValueError("Dashboard template has no runtime mode marker")
         html = html.replace('data-mode="live"', 'data-mode="static"', 1)
+        before, start, rest = html.partition("<!-- live-refresh:start -->")
+        _, end, after = rest.partition("<!-- live-refresh:end -->")
+        if not start or not end:
+            raise ValueError("Dashboard template has no local refresh control markers")
+        html = before + after
         (stage / "index.html").write_text(html, encoding="utf-8")
         (stage / ".nojekyll").write_text("", encoding="utf-8")
         write_json(stage / "market.json", market)

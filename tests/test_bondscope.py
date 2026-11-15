@@ -171,13 +171,13 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(len(json.loads(data)["bonds"]), 28)
 
     def test_versioned_assets_and_html_are_not_cached(self):
-        for path in ["/", "/app.js?v=2", "/styles.css?v=2", "/api/bonds"]:
+        for path in ["/", "/app.js?v=4", "/styles.css?v=2", "/favicon.svg?v=2", "/api/bonds"]:
             status, data = self.request("GET", path)
             self.assertEqual(status, 200, path)
             self.assertTrue(data)
             self.assertIn("Cache-Control: no-store", self.response_headers)
         _, html = self.request("GET", "/")
-        self.assertIn(b'./app.js?v=2', html)
+        self.assertIn(b'./app.js?v=4', html)
         self.assertIn(b'./styles.css?v=2', html)
 
     def test_private_files_are_not_served(self):
