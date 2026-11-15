@@ -73,7 +73,7 @@ The repository includes [`.github/workflows/pages.yml`](.github/workflows/pages.
 3. Make sure repository/organisation Actions policies allow the workflow's `contents: write` permission and creation/updates of the `bondscope-data` branch. No personal access token or custom secret is required.
 4. Open **Actions → Update bond data and publish Pages → Run workflow** on the default branch. The deployment job reports the Pages URL.
 
-The workflow also runs on pushes to the default `main`/`master` branch and at **00:17, 06:17, 12:17 and 18:17 UTC** (**05:47, 11:47, 17:47 and 23:47 IST**). A manual run has a **scrape** checkbox; disable it to republish retained data without contacting providers. For a differently named default branch, update the workflow's push branch list. Only the default branch is deployed.
+The workflow runs once daily at **00:17 UTC** (**05:47 IST**), as well as on pushes to the default `main`/`master` branch. A manual run has a **scrape** checkbox; disable it to republish retained data without contacting providers. For a differently named default branch, update the workflow's push branch list. Only the default branch is deployed.
 
 Each run:
 

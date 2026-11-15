@@ -4,8 +4,8 @@ on:
   push:
     branches: [main, master]
   schedule:
-    # UTC: 00:17, 06:17, 12:17, 18:17 (05:47, 11:47, 17:47, 23:47 IST).
-    - cron: '17 */6 * * *'
+    # Daily at 00:17 UTC (05:47 IST).
+    - cron: '17 0 * * *'
   workflow_dispatch:
     inputs:
       scrape:
