@@ -204,7 +204,7 @@ The browser exports every filtered row across pages, in the selected order. CLI 
 - `bondscope/__main__.py`: local HTTP API, collector/build/preview CLI.
 - `bondscope/publishing.py`: static build, state export/restore and static preview.
 - `scripts/pages-state.sh`: durable source-state Git branch handoff used by the Pages workflow.
-- `web/`: responsive dashboard without external assets or a build step.
+- `web/`: responsive dashboard without an asset compilation step. Inter loads from Google Fonts; system fonts provide a fallback when unavailable.
 
 ```bash
 python -m unittest discover -s tests -v
