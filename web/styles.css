@@ -20,7 +20,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .brand { display: inline-flex; align-items: center; gap: 9px; font-size: 21px; font-weight: 650; letter-spacing: -.8px; }
 .country { font-size: 9px; font-weight: 500; letter-spacing: 1px; color: var(--muted); margin-left: 3px; }
 main { max-width: 1480px; margin: 0 auto; padding: 36px 4% 0; }
-.section-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.section-title { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-bottom: 28px; }
 h1 { font-size: 26px; font-weight: 550; letter-spacing: -.8px; margin: 0; }
 h2 { font-size: 22px; font-weight: 550; letter-spacing: -.5px; margin: 0; }
 .actions { display: flex; gap: 8px; }
